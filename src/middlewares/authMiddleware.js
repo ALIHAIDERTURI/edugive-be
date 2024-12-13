@@ -1,25 +1,33 @@
 const jwt = require('jsonwebtoken');
 
 const requireAuth = (roles = []) => (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
+  // Extract token from either cookies or headers
+  const token = req.cookies.auth_token || req.headers.authorization?.split(' ')[1];
 
-  const token = authHeader.split(' ')[1]; // Extract token from the "Bearer <token>" format
   if (!token) {
     return res.status(401).json({ message: 'No token provided' });
   }
 
   try {
+    // Verify token and decode payload
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!roles.includes(decoded.role)) {
+
+    // Check if role is present in decoded token
+    if (!decoded.role) {
+      return res.status(403).json({ message: 'Role not found in token' });
+    }
+
+    // Check if user's role matches the required roles
+    if (roles.length && !roles.includes(decoded.role)) {
       return res.status(403).json({ message: 'Access denied' });
     }
-    req.user = decoded; // Attach the decoded user information to the request
-    next();
+
+    // Attach decoded user info to the request object
+    req.user = decoded;
+    
+    next(); // Continue to the next middleware or route handler
   } catch (error) {
-    console.error('Token verification failed:', error); // Log error for debugging purposes
+    console.error('Token verification failed:', error); // Log error for debugging
     res.status(401).json({ message: 'Invalid or expired token' });
   }
 };

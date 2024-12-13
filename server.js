@@ -1,15 +1,21 @@
 require('dotenv').config();
 const express = require('express');
 const passport = require('./src/configs/passportConfig');
-const authRoutes = require('./src/routes/authRoutes');
 const session = require('express-session');
 const mongoose = require('mongoose');
 const { connectDB } = require('./src/configs/dbConfig');
+const cookieParser = require('cookie-parser');
+const authRoutes = require('./src/routes/authRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+
 
 const app = express();
 
 // Middleware configurations
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
+app.use(cookieParser());
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'default_secret',
@@ -22,6 +28,7 @@ app.use(passport.session());
 
 // Route setup
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
 
 // Root route for connection status
 app.get('/', (req, res) => {

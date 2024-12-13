@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
+const { Cookie } = require('express-session');
 
 // Register a new user
 const register = async (req, res) => {
@@ -14,26 +15,39 @@ const register = async (req, res) => {
   }
 };
 
-// Login an existing user
 const login = async (req, res) => {
   const { username, email, password } = req.body;
-  
+
   try {
     // Find user by username or email
     const user = await User.findOne({ $or: [{ username }, { email }] });
-    
+
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    
+
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    // Clear any previous 'auth_token' cookies before setting a new one
+    res.clearCookie('auth_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' });
+    
+    // Clear the 'token' cookie if it was set elsewhere (to avoid conflicts)
+    res.clearCookie('token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' });
+
+    // Set the token in the 'auth_token' cookie
+    res.cookie('auth_token', token, {
+      httpOnly: true,  // Prevents JavaScript access
+      secure: process.env.NODE_ENV === 'production',  // Only send over HTTPS in production
+      maxAge: 3600000,  // 1 hour expiry
+      sameSite: 'Strict',  // Prevent CSRF attacks
+    });
+
     res.status(200).json({ 
       message: 'Login successful',
-      token,
       user: {
         id: user._id,
         email: user.email,
-        name: user.name, // Add any other user fields you need
+        name: user.name,
         role: user.role,
       }
     });
@@ -41,6 +55,9 @@ const login = async (req, res) => {
     res.status(500).json({ message: 'Error logging in', error });
   }
 };
+
+
+
 
 
 // Google OAuth callback

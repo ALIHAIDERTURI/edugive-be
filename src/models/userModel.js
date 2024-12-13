@@ -23,10 +23,12 @@ const userSchema = new mongoose.Schema({
     enum: ['student', 'instructor', 'admin'], 
     default: 'student' 
   },
-  // isVerified: { type: Boolean, default: false }, 
-
   googleId: { type: String, default: null },
   facebookId: { type: String, default: null },
+  enrolledCourses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course' // Reference to the Course model
+  }],
   createdAt: { type: Date, default: Date.now },
 });
 
